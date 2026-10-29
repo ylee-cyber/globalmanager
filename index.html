@@ -286,7 +286,7 @@
 
   <!-- 탭 4: 데이터 요약 및 시각화 탭 -->
   <div id="tab4" class="tab-content">
-    <h2>시계열 데이터 요약 및 시각화 (10분 간격 기록)</h2>
+    <h2>시계열 데이터 요약 및 시각화 (15분 간격 기록)</h2>
     <div class="input-group" style="margin-bottom: 10px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
         <label style="margin: 0;">분석 대상 선택 및 조회 날짜 (전체 방송자 페이징)</label>
@@ -506,7 +506,8 @@
     if (!supabaseClient) return;
     const now = new Date();
     const minutes = now.getMinutes();
-    const roundedMinutes = Math.floor(minutes / 10) * 10;
+    // 15분 간격 슬롯 계산 (0, 15, 30, 45분)
+    const roundedMinutes = Math.floor(minutes / 15) * 15;
     const slotDate = new Date(now);
     slotDate.setMinutes(roundedMinutes, 0, 0);
 
@@ -515,15 +516,28 @@
 
     try {
       const slotEnd = new Date(slotDate);
-      slotEnd.setMinutes(slotEnd.getMinutes() + 10);
+      slotEnd.setMinutes(slotEnd.getMinutes() + 15);
 
-      await supabaseClient
+      // 💡 [추가 로직] 해당 15분 슬롯 구간에 이미 저장된 데이터가 있는지 확인
+      const { data: existingLogs, error: checkError } = await supabaseClient
         .from('viewer_logs')
-        .delete()
+        .select('id')
         .gte('recorded_at', slotDate.toISOString())
-        .lt('recorded_at', slotEnd.toISOString());
+        .lt('recorded_at', slotEnd.toISOString())
+        .limit(1);
 
-      // 💡 일본 시청자 수 기준 상위 10위 이내 데이터만 추출하여 저장
+      if (checkError) {
+        console.error("슬롯 중복 확인 중 오류 발생:", checkError.message);
+        return;
+      }
+
+      // 이미 해당 시간대에 데이터가 존재하면 중복 저장을 방지하기 위해 리턴(종료)
+      if (existingLogs && existingLogs.length > 0) {
+        console.log(`[중복 방지] ${slotDate.toLocaleTimeString()} 슬롯에 이미 데이터가 존재하여 저장을 건너뜁니다.`);
+        return;
+      }
+
+      // 일본 시청자 수 기준 상위 10위 이내 데이터만 추출
       const top10Data = parsedData.slice(0, 10);
 
       const rowsToInsert = top10Data.map(item => ({
@@ -539,7 +553,7 @@
 
       if (rowsToInsert.length > 0) {
         const { error } = await supabaseClient.from('viewer_logs').insert(rowsToInsert);
-        if (error) console.error("상위 10위 시계열 데이터 저장 실패:", error.message);
+        if (error) console.error("15분 간격 시계열 데이터 저장 실패:", error.message);
       }
     } catch (e) { console.error(e); }
   }
@@ -818,7 +832,7 @@
               maxRotation: 0,
               minRotation: 0
             },
-            title: { display: true, text: '기록 시간 (10분 간격)' } 
+            title: { display: true, text: '기록 시간 (15분 간격)' } 
           }
         }
       }
@@ -1070,49 +1084,6 @@
     renderTable();
   }
 
-  function renderTable() {
-    const top30 = lastParsedData.slice(0, 30);
-    const tbody = document.getElementById('resultBody');
-    tbody.innerHTML = '';
-
-    if (top30.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">데이터 추출 실패</td></tr>';
-      return;
-    }
-
-    top30.equal = top30.forEach((item, index) => {
-      const row = document.createElement('tr');
-      const hasSupporter = (item.supporter !== '-' && !isNaN(item.supporter));
-
-      if (item.subtitleType === '고급') row.classList.add('row-advanced');
-      else if (item.subtitleType === '일반' && hasSupporter) row.classList.add('row-supporter');
-
-      const pref = bjPreferencesMap[item.id] || 'normal';
-      if (pref === 'dislike') row.classList.add('row-dislike');
-
-      const statusClass = item.liveStatus === '라이브' ? 'type-live' : (item.liveStatus === '녹화방송' ? 'type-rec' : '');
-      const supporterDisplay = hasSupporter ? item.supporter : '-';
-
-      row.innerHTML = `
-        <td class="rank">${index + 1}</td>
-        <td class="streamer-id-col">${escapeHtml(item.id + '(' + item.name + ')')}</td>
-        <td class="sub-type">${escapeHtml(item.subtitleType)}</td>
-        <td class="live-type ${statusClass}">${escapeHtml(item.liveStatus)}</td>
-        <td class="supporter-col">${supporterDisplay}</td>
-        <td class="count">${item.count.toLocaleString()} 명</td>
-        <td class="action-col" style="text-align: center;">
-          <div class="pref-btns">
-            <button class="btn-pref like ${pref === 'like' ? 'active' : ''}" onclick="setBjPreference('${escapeHtml(item.id)}', 'like')" title="추천">👍</button>
-            <button class="btn-pref dislike ${pref === 'dislike' ? 'active' : ''}" onclick="setBjPreference('${escapeHtml(item.id)}', 'dislike')" title="비추천">👎</button>
-            <button class="btn-row-copy" onclick="copySingleId('${escapeHtml(item.id)}', this)">복사</button>
-          </div>
-        </td>
-      `;
-      tbody.appendChild(row);
-    });
-  }
-
-  // 버그 방지용 보완 수정
   function renderTable() {
     const top30 = lastParsedData.slice(0, 30);
     const tbody = document.getElementById('resultBody');
