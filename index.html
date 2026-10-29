@@ -506,7 +506,6 @@
     if (!supabaseClient) return;
     const now = new Date();
     const minutes = now.getMinutes();
-    // 15분 간격 슬롯 계산 (0, 15, 30, 45분)
     const roundedMinutes = Math.floor(minutes / 15) * 15;
     const slotDate = new Date(now);
     slotDate.setMinutes(roundedMinutes, 0, 0);
@@ -518,7 +517,6 @@
       const slotEnd = new Date(slotDate);
       slotEnd.setMinutes(slotEnd.getMinutes() + 15);
 
-      // 💡 [추가 로직] 해당 15분 슬롯 구간에 이미 저장된 데이터가 있는지 확인
       const { data: existingLogs, error: checkError } = await supabaseClient
         .from('viewer_logs')
         .select('id')
@@ -531,13 +529,11 @@
         return;
       }
 
-      // 이미 해당 시간대에 데이터가 존재하면 중복 저장을 방지하기 위해 리턴(종료)
       if (existingLogs && existingLogs.length > 0) {
         console.log(`[중복 방지] ${slotDate.toLocaleTimeString()} 슬롯에 이미 데이터가 존재하여 저장을 건너뜁니다.`);
         return;
       }
 
-      // 일본 시청자 수 기준 상위 10위 이내 데이터만 추출
       const top10Data = parsedData.slice(0, 10);
 
       const rowsToInsert = top10Data.map(item => ({
