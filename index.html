@@ -87,7 +87,7 @@
     .type-live { color: #28a745; }
     .type-rec { color: #fd7e14; }
     .count { text-align: right; font-weight: bold; color: #d9534f; width: 110px; }
-    .action-col { text-align: center; width: 120px; }
+    .action-col { text-align: center; width: 150px; }
     
     .btn-row-copy {
       padding: 4px 8px; font-size: 12px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background 0.2s;
@@ -95,19 +95,53 @@
     .btn-row-copy:hover { background-color: #495057; }
     .btn-row-copy.copied { background-color: #28a745; }
 
-    .pref-btns { display: flex; gap: 4px; justify-content: center; }
+    .pref-btns { display: flex; gap: 4px; justify-content: center; align-items: center; flex-wrap: wrap; }
     .btn-pref { padding: 4px 6px; font-size: 12px; border: 1px solid #ccc; background: #fff; border-radius: 4px; cursor: pointer; }
     .btn-pref.like.active { background-color: #28a745; color: #fff; border-color: #28a745; }
     .btn-pref.dislike.active { background-color: #dc3545; color: #fff; border-color: #dc3545; }
+    .btn-memo { padding: 4px 8px; font-size: 12px; background-color: #ffc107; color: #333; border: 1px solid #b38f00; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-memo:hover { background-color: #e0a800; }
     tr.row-dislike { opacity: 0.35; background-color: #e9ecef !important; }
 
-    /* 📊 스크롤 없는 한 화면에 들어오는 차트 컨테이너 설정 */
+    /* 📝 메모 모달 스타일 */
+    #memoModal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5); z-index: 10000; display: none;
+      justify-content: center; align-items: center;
+    }
+    .memo-modal-content {
+      background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 540px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2); max-height: 90vh; display: flex; flex-direction: column;
+    }
+    .memo-list-area {
+      max-height: 280px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 6px; padding: 10px; margin-bottom: 15px; background: #f8f9fa;
+    }
+    .memo-item {
+      background: white; border: 1px solid #ced4da; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 13px;
+    }
+    .memo-item.reply-item {
+      margin-left: 20px; background: #f1f3f5; border-left: 3px solid #007bff;
+    }
+    .memo-item-header { display: flex; justify-content: space-between; font-weight: bold; color: #0056b3; margin-bottom: 4px; align-items: center; }
+    .memo-item-date { font-size: 11px; color: #6c757d; font-weight: normal; }
+    .memo-item-body { color: #333; word-break: break-all; margin-bottom: 6px; }
+    .memo-item-actions { display: flex; gap: 6px; justify-content: flex-end; font-size: 11px; }
+    .memo-action-btn { background: none; border: none; color: #6c757d; cursor: pointer; padding: 2px 4px; font-weight: bold; }
+    .memo-action-btn:hover { color: #007bff; }
+    .memo-action-btn.delete { color: #dc3545; }
+    .memo-action-btn.delete:hover { color: #a71d2a; }
+
+    /* 대댓글 작성 안내 바 */
+    #replyTargetBar {
+      display: none; background: #e7f5ff; border: 1px solid #74c0fc; padding: 6px 10px; border-radius: 4px; font-size: 12px; color: #1c7ed6; margin-bottom: 8px; justify-content: space-between; align-items: center;
+    }
+
+    /* 📊 차트 컨테이너 설정 */
     .chart-container {
       position: relative; width: 100%; height: 350px; margin-top: 15px;
       border: 1px solid #dee2e6; border-radius: 8px; background: #fff; padding: 10px; box-sizing: border-box;
     }
     
-    /* 칩 선택 영역 및 페이징 디자인 */
     .bubble-picker-container {
       display: flex; flex-wrap: wrap; gap: 6px; padding: 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 8px; min-height: 50px; align-items: center;
     }
@@ -128,8 +162,7 @@
     .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
     .hourly-table-container { margin-top: 25px; border-top: 2px solid #dee2e6; padding-top: 15px; }
-    .hourly-header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px; }
-
+    
     .converter-control-bar {
       display: grid; grid-template-columns: minmax(200px, 1fr) auto; gap: 12px; align-items: end; margin-bottom: 15px; padding: 15px; border: 1px solid #dee2e6; border-radius: 6px; background: #f8f9fa;
     }
@@ -172,6 +205,43 @@
       <p>서비스를 이용하려면 비밀번호를 입력해주세요.</p>
       <input type="password" id="accessPwd" placeholder="비밀번호 입력" onkeyup="if(event.key==='Enter') checkPassword()">
       <button onclick="checkPassword()">확인</button>
+    </div>
+  </div>
+
+  <!-- 📝 메모 / 대댓글 공유 모달 -->
+  <div id="memoModal">
+    <div class="memo-modal-content">
+      <h3 id="memoModalTitle" style="margin-top:0; margin-bottom: 10px; color:#333; font-size: 16px;">방송자 메모 및 의견 공유</h3>
+      
+      <div id="memoListContainer" class="memo-list-area">
+        <span style="font-size: 12px; color: #888;">작성된 메모가 없습니다.</span>
+      </div>
+
+      <!-- 대댓글 대상 안내 바 -->
+      <div id="replyTargetBar">
+        <span id="replyTargetText">💬 답글 작성 중...</span>
+        <button type="button" class="memo-action-btn delete" onclick="cancelReplyMode()">취소</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; margin-bottom: 8px;">
+        <div>
+          <label for="memoAuthorInput" style="font-size: 11px; margin-bottom: 2px;">작성자 이름:</label>
+          <input type="text" id="memoAuthorInput" placeholder="이름" style="padding: 6px; font-size: 13px;">
+        </div>
+        <div style="display: flex; flex-direction: column; justify-content: flex-end;">
+          <span id="memoModeIndicator" style="font-size: 11px; color: #007bff; font-weight: bold; text-align: right; margin-bottom: 2px;">새 메모 작성 모드</span>
+        </div>
+      </div>
+
+      <div class="input-group" style="margin-bottom: 10px;">
+        <label for="memoContentInput" style="font-size: 11px; margin-bottom: 2px;">내용:</label>
+        <textarea id="memoContentInput" placeholder="코멘트를 입력하세요..." style="height: 60px; padding: 6px; font-size: 13px;"></textarea>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button id="memoSubmitBtn" class="small-btn" style="flex: 1; background: #007bff; color: white; border: none; padding: 8px;" onclick="submitMemoAction()">메모 등록</button>
+        <button class="small-btn" style="flex: 1; background: #6c757d; color: white; border: none; padding: 8px;" onclick="closeMemoModal()">닫기</button>
+      </div>
     </div>
   </div>
 
@@ -371,7 +441,6 @@
 <script>
   // ==========================================
   // 🔒 접근 비밀번호 SHA-256 해시 설정
-  // ('support123!@#' 에 대한 SHA-256 해시값)
   // ==========================================
   const CORRECT_PASSWORD_HASH = "aecaf95c9b78e1b35c08df0407469128cff70d964d8cece404936f2599d194fd";
 
@@ -397,17 +466,13 @@
   }
 
   // ==========================================
-  // 🔑 Supabase 난독화 설정 (Base64 인코딩 적용)
+  // 🔑 Supabase 난독화 설정
   // ==========================================
   const ENCODED_URL = "aHR0cHM6Ly9tZmpwZmZtY2V6enlsaG9wenNvdi5zdXBhYmFzZS5jbw=="; 
   const ENCODED_KEY = "ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW0xbWFuQm1abTFqWlhwNmVXeG9iM0I2YzI5Mklpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzT1RNeU5qVXlPRE1zSW1WNGNDSTZNakV3T0RnME1USTRNMzAud2V4dlZCRmtaUC0tWDQwYU1rYzhMZ1ptRGNTMWhpUEtqeDhtRERzZXR2RQ==";
 
   function decodeBase64(encoded) {
-    try {
-      return atob(encoded);
-    } catch(e) {
-      return "";
-    }
+    try { return atob(encoded); } catch(e) { return ""; }
   }
 
   let lastParsedData = [];
@@ -417,6 +482,10 @@
   let currentSelectedMode = 'ALL_SUM'; 
   let globalLogCache = [];
   
+  let currentMemoBjId = null;
+  let activeReplyParentId = null; // 대댓글 대상 ID
+  let activeEditMemoId = null;     // 수정 중인 메모 ID
+
   let currentPickerPage = 1;
   const pickerItemsPerPage = 12;
 
@@ -429,9 +498,7 @@
     
     const todayStr = new Date().toISOString().split('T')[0];
     const dateInput = document.getElementById('statsDateFilter');
-    if (dateInput) {
-      dateInput.value = todayStr;
-    }
+    if (dateInput) dateInput.value = todayStr;
 
     initSupabaseSecure();
   };
@@ -469,9 +536,7 @@
     document.querySelectorAll('.tab-btn')[tabIndexMap[tabId]].classList.add('active');
     document.getElementById(tabId).classList.add('active');
 
-    if (tabId === 'tab4') {
-      loadAnalyticsData();
-    }
+    if (tabId === 'tab4') loadAnalyticsData();
   }
 
   async function loadPreferences() {
@@ -486,10 +551,7 @@
   }
 
   async function setBjPreference(bjId, status) {
-    if (!supabaseClient) {
-      alert("Supabase가 연결되어 있지 않습니다.");
-      return;
-    }
+    if (!supabaseClient) { alert("Supabase가 연결되어 있지 않습니다."); return; }
     const current = bjPreferencesMap[bjId];
     const newStatus = (current === status) ? 'normal' : status;
     bjPreferencesMap[bjId] = newStatus;
@@ -500,6 +562,195 @@
         .upsert({ bj_id: bjId, status: newStatus, updated_at: new Date().toISOString() }, { onConflict: 'bj_id' });
       renderTable();
     } catch (e) { console.error(e); }
+  }
+
+  // ==========================================
+  // 📝 메모 및 대댓글, 수정, 삭제 관리 로직
+  // ==========================================
+  async function openMemoModal(bjId, bjName) {
+    currentMemoBjId = bjId;
+    cancelReplyMode();
+    cancelEditMode();
+    document.getElementById('memoModalTitle').textContent = `[${bjId}(${bjName})] 메모 및 의견 공유`;
+    document.getElementById('memoModal').style.display = 'flex';
+    
+    await loadMemosForBj(bjId);
+  }
+
+  function closeMemoModal() {
+    document.getElementById('memoModal').style.display = 'none';
+    currentMemoBjId = null;
+    cancelReplyMode();
+    cancelEditMode();
+  }
+
+  async function loadMemosForBj(bjId) {
+    const container = document.getElementById('memoListContainer');
+    container.innerHTML = '<span style="font-size: 12px; color: #888;">메모 불러오는 중...</span>';
+
+    if (!supabaseClient) {
+      container.innerHTML = '<span style="font-size: 12px; color: red;">DB 연결이 필요합니다.</span>';
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('bj_memos')
+        .select('*')
+        .eq('bj_id', bjId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        container.innerHTML = '<span style="font-size: 12px; color: red;">메모 조회 실패</span>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        container.innerHTML = '<span style="font-size: 12px; color: #888;">작성된 메모가 없습니다. 첫 코멘트를 남겨보세요!</span>';
+        return;
+      }
+
+      // 부모 메모와 대댓글 분류 정렬
+      const parentMemos = data.filter(m => !m.parent_id);
+      const replyMemos = data.filter(m => m.parent_id);
+
+      container.innerHTML = '';
+      
+      parentMemos.forEach(parent => {
+        container.appendChild(createMemoElement(parent, false));
+        // 해당 부모의 대댓글들 찾기
+        const children = replyMemos.filter(r => r.parent_id === parent.id);
+        children.forEach(child => {
+          container.appendChild(createMemoElement(child, true));
+        });
+      });
+
+    } catch (e) {
+      console.error(e);
+      container.innerHTML = '<span style="font-size: 12px; color: red;">오류가 발생했습니다.</span>';
+    }
+  }
+
+  function createMemoElement(memo, isReply) {
+    const dateObj = new Date(memo.created_at);
+    const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+    const div = document.createElement('div');
+    div.className = `memo-item ${isReply ? 'reply-item' : ''}`;
+    div.id = `memo-row-${memo.id}`;
+    
+    div.innerHTML = `
+      <div class="memo-item-header">
+        <span>👤 ${escapeHtml(memo.author)}</span>
+        <span class="memo-item-date">${dateStr}</span>
+      </div>
+      <div class="memo-item-body" id="memo-body-${memo.id}">${escapeHtml(memo.content)}</div>
+      <div class="memo-item-actions">
+        ${!isReply ? `<button class="memo-action-btn" onclick="setReplyMode(${memo.id}, '${escapeHtml(memo.author)}')">💬 답글</button>` : ''}
+        <button class="memo-action-btn" onclick="setEditMode(${memo.id}, '${escapeHtml(memo.content).replace(/'/g, "\\'")}')">✏️ 수정</button>
+        <button class="memo-action-btn delete" onclick="deleteMemo(${memo.id})">🗑️ 삭제</button>
+      </div>
+    `;
+    return div;
+  }
+
+  function setReplyMode(parentId, parentAuthor) {
+    activeReplyParentId = parentId;
+    cancelEditMode();
+    document.getElementById('replyTargetBar').style.display = 'flex';
+    document.getElementById('replyTargetText').textContent = `💬 [${parentAuthor}]님에게 답글 작성 중`;
+    document.getElementById('memoModeIndicator').textContent = "대댓글 작성 모드";
+    document.getElementById('memoSubmitBtn').textContent = "답글 등록";
+    document.getElementById('memoContentInput').focus();
+  }
+
+  function cancelReplyMode() {
+    activeReplyParentId = null;
+    document.getElementById('replyTargetBar').style.display = 'none';
+    if (!activeEditMemoId) {
+      document.getElementById('memoModeIndicator').textContent = "새 메모 작성 모드";
+      document.getElementById('memoSubmitBtn').textContent = "메모 등록";
+    }
+  }
+
+  function setEditMode(memoId, currentContent) {
+    cancelReplyMode();
+    activeEditMemoId = memoId;
+    document.getElementById('memoContentInput').value = currentContent;
+    document.getElementById('memoModeIndicator').textContent = "메모 수정 모드 (내용 변경 후 등록)";
+    document.getElementById('memoSubmitBtn').textContent = "수정 완료";
+    document.getElementById('memoContentInput').focus();
+  }
+
+  function cancelEditMode() {
+    activeEditMemoId = null;
+    document.getElementById('memoContentInput').value = '';
+    if (!activeReplyParentId) {
+      document.getElementById('memoModeIndicator').textContent = "새 메모 작성 모드";
+      document.getElementById('memoSubmitBtn').textContent = "메모 등록";
+    }
+  }
+
+  async function submitMemoAction() {
+    if (!supabaseClient) { alert("Supabase가 연결되어 있지 않습니다."); return; }
+    if (!currentMemoBjId) return;
+
+    const author = document.getElementById('memoAuthorInput').value.trim();
+    const content = document.getElementById('memoContentInput').value.trim();
+
+    if (!author) { alert("작성자 이름을 입력해주세요."); return; }
+    if (!content) { alert("내용을 입력해주세요."); return; }
+
+    try {
+      if (activeEditMemoId) {
+        // 수정 모드
+        const { error } = await supabaseClient
+          .from('bj_memos')
+          .update({ content: content })
+          .eq('id', activeEditMemoId);
+
+        if (error) { alert("수정 실패: " + error.message); return; }
+        cancelEditMode();
+      } else {
+        // 등록 모드 (새 메모 또는 대댓글)
+        const insertData = {
+          bj_id: currentMemoBjId,
+          parent_id: activeReplyParentId ? activeReplyParentId : null,
+          author: author,
+          content: content
+        };
+
+        const { error } = await supabaseClient.from('bj_memos').insert([insertData]);
+        if (error) { alert("등록 실패: " + error.message); return; }
+        
+        cancelReplyMode();
+      }
+
+      document.getElementById('memoContentInput').value = '';
+      await loadMemosForBj(currentMemoBjId);
+
+    } catch (e) {
+      console.error(e);
+      alert("처리 중 오류가 발생했습니다.");
+    }
+  }
+
+  async function deleteMemo(memoId) {
+    if (!supabaseClient) { alert("Supabase가 연결되어 있지 않습니다."); return; }
+    if (!confirm("정말 이 메모를 삭제하시겠습니까? (하위 답글도 함께 삭제될 수 있습니다)")) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('bj_memos')
+        .delete()
+        .eq('id', memoId);
+
+      if (error) { alert("삭제 실패: " + error.message); return; }
+      await loadMemosForBj(currentMemoBjId);
+    } catch (e) {
+      console.error(e);
+      alert("삭제 중 오류가 발생했습니다.");
+    }
   }
 
   async function saveViewerLogsToSupabase(parsedData) {
@@ -524,18 +775,10 @@
         .lt('recorded_at', slotEnd.toISOString())
         .limit(1);
 
-      if (checkError) {
-        console.error("슬롯 중복 확인 중 오류 발생:", checkError.message);
-        return;
-      }
-
-      if (existingLogs && existingLogs.length > 0) {
-        console.log(`[중복 방지] ${slotDate.toLocaleTimeString()} 슬롯에 이미 데이터가 존재하여 저장을 건너뜁니다.`);
-        return;
-      }
+      if (checkError) return;
+      if (existingLogs && existingLogs.length > 0) return;
 
       const top10Data = parsedData.slice(0, 10);
-
       const rowsToInsert = top10Data.map(item => ({
         recorded_at: slotDate.toISOString(),
         bj_id: item.id,
@@ -548,8 +791,7 @@
       }));
 
       if (rowsToInsert.length > 0) {
-        const { error } = await supabaseClient.from('viewer_logs').insert(rowsToInsert);
-        if (error) console.error("15분 간격 시계열 데이터 저장 실패:", error.message);
+        await supabaseClient.from('viewer_logs').insert(rowsToInsert);
       }
     } catch (e) { console.error(e); }
   }
@@ -568,7 +810,6 @@
     const hourDate = new Date(now);
     hourDate.setMinutes(0, 0, 0);
     const statHourStr = hourDate.toISOString();
-    const recordedAt = now.toISOString();
 
     try {
       const { data: existingStat } = await supabaseClient
@@ -586,17 +827,14 @@
           total_broadcasts: stats.totalBroadcasts,
           rec_count: stats.rec,
           android_count: stats.android,
-          updated_at: recordedAt
+          updated_at: now.toISOString()
         }, { onConflict: 'stat_hour' });
       }
-    } catch (e) { console.error("hourly_stats 저장 오류:", e); }
+    } catch (e) { console.error(e); }
   }
 
   async function loadAnalyticsData() {
-    if (!supabaseClient) {
-      alert("Supabase가 연결되어 있지 않습니다.");
-      return;
-    }
+    if (!supabaseClient) { alert("Supabase가 연결되어 있지 않습니다."); return; }
 
     try {
       const selectedDateStr = document.getElementById('statsDateFilter').value;
@@ -619,7 +857,6 @@
       renderChart(globalLogCache, currentSelectedMode);
 
       await loadHourlyStatsFromDB();
-
     } catch (e) { console.error(e); }
   }
 
@@ -641,13 +878,8 @@
         .lte('stat_hour', endDate)
         .order('stat_hour', { ascending: true });
 
-      if (error) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">통계 데이터 조회 실패</td></tr>';
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">선택한 날짜(${selectedDateStr})에 기록된 정각 통계가 없습니다.</td></tr>`;
+      if (error || !data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">기록된 정각 통계가 없습니다.</td></tr>`;
         return;
       }
 
@@ -665,21 +897,11 @@
         `;
         tbody.appendChild(tr);
       });
-
-    } catch (e) {
-      console.error(e);
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">오류가 발생했습니다.</td></tr>';
-    }
+    } catch (e) { console.error(e); }
   }
 
-  function onDateFilterChange() {
-    loadAnalyticsData();
-  }
-
-  function changePickerPage(direction) {
-    currentPickerPage += direction;
-    renderBubblePicker(globalLogCache);
-  }
+  function onDateFilterChange() { loadAnalyticsData(); }
+  function changePickerPage(direction) { currentPickerPage += direction; renderBubblePicker(globalLogCache); }
 
   function renderBubblePicker(logData) {
     const pickerContainer = document.getElementById('bubblePicker');
@@ -688,9 +910,7 @@
     const selectedDateStr = document.getElementById('statsDateFilter').value;
     const searchQuery = (document.getElementById('bubbleSearchInput').value || '').trim().toLowerCase();
 
-    const dateFilteredLogs = logData.filter(item => {
-      return new Date(item.recorded_at).toISOString().split('T')[0] === selectedDateStr;
-    });
+    const dateFilteredLogs = logData.filter(item => new Date(item.recorded_at).toISOString().split('T')[0] === selectedDateStr);
 
     if (!searchQuery) {
       const allSumBtn = document.createElement('div');
@@ -707,26 +927,15 @@
 
     const bjMap = {};
     dateFilteredLogs.forEach(item => {
-      if (!bjMap[item.bj_id]) {
-        bjMap[item.bj_id] = { id: item.bj_id, name: item.nickname, sum: 0, count: 0 };
-      }
+      if (!bjMap[item.bj_id]) bjMap[item.bj_id] = { id: item.bj_id, name: item.nickname, sum: 0, count: 0 };
       bjMap[item.bj_id].sum += item.viewer_count;
       bjMap[item.bj_id].count += 1;
-      if (item.nickname && item.nickname !== '미정') {
-        bjMap[item.bj_id].name = item.nickname;
-      }
+      if (item.nickname && item.nickname !== '미정') bjMap[item.bj_id].name = item.nickname;
     });
 
-    let sortedBjs = Object.values(bjMap).map(b => ({
-      ...b,
-      avg: Math.round(b.sum / b.count)
-    })).sort((a, b) => b.avg - a.avg);
-
+    let sortedBjs = Object.values(bjMap).map(b => ({ ...b, avg: Math.round(b.sum / b.count) })).sort((a, b) => b.avg - a.avg);
     if (searchQuery) {
-      sortedBjs = sortedBjs.filter(bj => 
-        bj.id.toLowerCase().includes(searchQuery) || 
-        (bj.name && bj.name.toLowerCase().includes(searchQuery))
-      );
+      sortedBjs = sortedBjs.filter(bj => bj.id.toLowerCase().includes(searchQuery) || (bj.name && bj.name.toLowerCase().includes(searchQuery)));
     }
 
     const totalItems = sortedBjs.length;
@@ -762,51 +971,32 @@
 
   function renderChart(logData, targetMode) {
     const selectedDateStr = document.getElementById('statsDateFilter').value;
+    const filteredLogData = logData.filter(item => new Date(item.recorded_at).toISOString().split('T')[0] === selectedDateStr);
 
-    const filteredLogData = logData.filter(item => {
-      const itemDateStr = new Date(item.recorded_at).toISOString().split('T')[0];
-      return itemDateStr === selectedDateStr;
-    });
-
-    let chartLabels = [];
-    let chartDatasets = [];
-
+    let chartLabels = [], chartDatasets = [];
     const timeMap = {};
     filteredLogData.forEach(item => {
       const timeKey = new Date(item.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      if (!timeMap[timeKey]) {
-        timeMap[timeKey] = { viewerSum: 0 };
-      }
+      if (!timeMap[timeKey]) timeMap[timeKey] = { viewerSum: 0 };
       timeMap[timeKey].viewerSum += item.viewer_count;
     });
 
     chartLabels = Object.keys(timeMap);
 
     if (targetMode === 'ALL_SUM') {
-      const sumViewers = chartLabels.map(t => timeMap[t].viewerSum);
-
       chartDatasets = [{
         label: `전체 일본 시청자 수 합계 (${selectedDateStr})`,
-        data: sumViewers,
-        borderColor: '#7950f8',
-        backgroundColor: 'rgba(121, 80, 248, 0.1)',
-        fill: true,
-        tension: 0.1
+        data: chartLabels.map(t => timeMap[t].viewerSum),
+        borderColor: '#7950f8', backgroundColor: 'rgba(121, 80, 248, 0.1)', fill: true, tension: 0.1
       }];
     } else {
       const bjFiltered = filteredLogData.filter(i => i.bj_id === targetMode);
       chartLabels = bjFiltered.map(i => new Date(i.recorded_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      const counts = bjFiltered.map(i => i.viewer_count);
       const sample = bjFiltered[0];
-      const bjLabel = sample ? `${sample.bj_id} (${sample.nickname})` : targetMode;
-
       chartDatasets = [{
-        label: `BJ: ${bjLabel} (${selectedDateStr})`,
-        data: counts,
-        borderColor: '#e83e8c',
-        backgroundColor: 'rgba(232, 62, 140, 0.1)',
-        fill: true,
-        tension: 0.1
+        label: `BJ: ${sample ? `${sample.bj_id} (${sample.nickname})` : targetMode} (${selectedDateStr})`,
+        data: bjFiltered.map(i => i.viewer_count),
+        borderColor: '#e83e8c', backgroundColor: 'rgba(232, 62, 140, 0.1)', fill: true, tension: 0.1
       }];
     }
 
@@ -817,25 +1007,15 @@
       type: 'line',
       data: { labels: chartLabels, datasets: chartDatasets },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
+        responsive: true, maintainAspectRatio: false,
         scales: {
           y: { beginAtZero: true, title: { display: true, text: '시청자 수 (명)' } },
-          x: { 
-            grid: { display: false },
-            ticks: {
-              autoSkip: true,
-              maxRotation: 0,
-              minRotation: 0
-            },
-            title: { display: true, text: '기록 시간 (15분 간격)' } 
-          }
+          x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0, minRotation: 0 }, title: { display: true, text: '기록 시간 (15분 간격)' } }
         }
       }
     });
   }
 
-  // === 탭 1 및 3 로직 (기존 유지) ===
   function generateNameInputs() {
     const count = parseInt(document.getElementById('personCount').value) || 0;
     const container = document.getElementById('namesContainer');
@@ -856,15 +1036,12 @@
     let i = 0;
     while (i < lines.length) {
       if (/^\d+$/.test(lines[i])) {
-        let blockLines = [];
-        let j = i;
+        let blockLines = [], j = i;
         while (j < lines.length && (j === i || !/^\d+$/.test(lines[j]) || lines[j].length > 15)) {
-          blockLines.push(lines[j]);
-          j++;
+          blockLines.push(lines[j]); j++;
         }
         const blockText = blockLines.join('\n');
-        const isRec = blockText.includes('녹화방송') || blockText.includes('녹방') || blockText.toLowerCase().includes('rec');
-        if (!isRec) {
+        if (!blockText.includes('녹화방송') && !blockText.includes('녹방') && !blockText.toLowerCase().includes('rec')) {
           for (let line of blockLines) {
             if (line.includes('(') && line.includes(')')) {
               const match = line.match(/^(.*?)\((.*?)\)$/);
@@ -916,8 +1093,7 @@
     let remIndex = 0;
     while (remIndex < remainingStreamers.length) {
       for (let i = 0; i < personCount && remIndex < remainingStreamers.length; i++) {
-        assignedMap[i].push(remainingStreamers[remIndex]);
-        remIndex++;
+        assignedMap[i].push(remainingStreamers[remIndex]); remIndex++;
       }
     }
 
@@ -948,8 +1124,7 @@
       else if (isRec) recCount++;
 
       if (isLive || isRec) {
-        const hasAndroid = block.split(/[\r\n\t]+/).some(t => t.trim().toLowerCase() === 'android');
-        if (hasAndroid) androidCount++;
+        if (block.split(/[\r\n\t]+/).some(t => t.trim().toLowerCase() === 'android')) androidCount++;
       }
     });
     return { totalBroadcasts: liveCount + recCount, rec: recCount, android: androidCount };
@@ -979,10 +1154,8 @@
   function fallbackCopy(text, resolve, reject) {
     try {
       const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
+      ta.value = text; ta.style.position = 'fixed';
+      document.body.appendChild(ta); ta.focus(); ta.select();
       const ok = document.execCommand('copy');
       document.body.removeChild(ta);
       ok ? resolve() : reject();
@@ -1014,8 +1187,7 @@
 
     blocks.forEach((block) => {
       const lines = block.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
-      let streamerId = '-', streamerName = '-', jpCount = null, subtitleType = '-';
-      let supporterVal = '-';
+      let streamerId = '-', streamerName = '-', jpCount = null, subtitleType = '-', supporterVal = '-';
       
       const isLive = lines.some(line => line.split('\t').map(p => p.trim()).some(p => p.toLowerCase().startsWith('live'))) || block.includes(' live ');
       const isRec = lines.some(line => line.split('\t').map(p => p.trim()).some(p => p.toLowerCase().startsWith('rec'))) || block.includes(' rec ') || block.includes('녹화방송');
@@ -1047,8 +1219,7 @@
         else if (numbers.length === 1) jpCount = numbers[0];
       }
 
-      let numMatchCount = 0;
-      let targetSubTokens = [];
+      let numMatchCount = 0, targetSubTokens = [];
       for (let i = 0; i < lines.length; i++) {
         if (/^\d+번/.test(lines[i]) || lines[i].includes('번')) {
           numMatchCount++;
@@ -1076,7 +1247,6 @@
 
     saveViewerLogsToSupabase(parsedData);
     saveHourlyStatsToSupabase(rawText);
-
     renderTable();
   }
 
@@ -1114,6 +1284,7 @@
           <div class="pref-btns">
             <button class="btn-pref like ${pref === 'like' ? 'active' : ''}" onclick="setBjPreference('${escapeHtml(item.id)}', 'like')" title="추천">👍</button>
             <button class="btn-pref dislike ${pref === 'dislike' ? 'active' : ''}" onclick="setBjPreference('${escapeHtml(item.id)}', 'dislike')" title="비추천">👎</button>
+            <button class="btn-memo" onclick="openMemoModal('${escapeHtml(item.id)}', '${escapeHtml(item.name)}')" title="메모 입력 및 공유">메모</button>
             <button class="btn-row-copy" onclick="copySingleId('${escapeHtml(item.id)}', this)">복사</button>
           </div>
         </td>
@@ -1135,7 +1306,7 @@
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
   }
 
-  // === 텍스트 변환기 로직 (유지) ===
+  // === 텍스트 변환기 로직 ===
   (() => {
     const elInput = document.getElementById("inputText");
     const elOutput = document.getElementById("outputText");
