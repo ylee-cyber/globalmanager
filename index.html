@@ -101,13 +101,10 @@
     .btn-pref.dislike.active { background-color: #dc3545; color: #fff; border-color: #dc3545; }
     tr.row-dislike { opacity: 0.35; background-color: #e9ecef !important; }
 
-    /* 📊 좌우 스크롤 가능한 차트 컨테이너 설정 */
-    .chart-scroll-wrapper {
-      position: relative; width: 100%; height: 380px; margin-top: 15px;
-      overflow-x: auto; overflow-y: hidden; border: 1px solid #dee2e6; border-radius: 8px; background: #fff;
-    }
-    .chart-inner-container {
-      position: relative; height: 350px; min-width: 100%;
+    /* 📊 스크롤 없는 한 화면에 들어오는 차트 컨테이너 설정 */
+    .chart-container {
+      position: relative; width: 100%; height: 350px; margin-top: 15px;
+      border: 1px solid #dee2e6; border-radius: 8px; background: #fff; padding: 10px; box-sizing: border-box;
     }
     
     /* 칩 선택 영역 및 페이징 디자인 */
@@ -188,8 +185,8 @@
   <!-- 상단 탭 버튼 -->
   <div class="tab-header">
     <button class="tab-btn active" onclick="switchTab('tab2')">시청자수 정렬 (Top 30)</button>
-    <button class="tab-btn" onclick="switchTab('tab4')">📊 데이터 요약 및 시각화</button>
     <button class="tab-btn" onclick="switchTab('tab3')">텍스트 변환기</button>
+    <button class="tab-btn" onclick="switchTab('tab4')">📊 데이터 요약 및 시각화</button>
     <button class="tab-btn" onclick="switchTab('tab1')">방송자 자동 배정기</button>
   </div>
 
@@ -234,66 +231,6 @@
         <tbody id="resultBody">
           <tr>
             <td colspan="7" style="text-align: center; color: #888;">데이터를 입력하고 버튼을 눌러주세요.</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 탭 4: 데이터 요약 및 시각화 탭 -->
-  <div id="tab4" class="tab-content">
-    <h2>시계열 데이터 요약 및 시각화 (10분 간격 기록)</h2>
-    <div class="input-group" style="margin-bottom: 10px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
-        <label style="margin: 0;">분석 대상 선택 및 조회 날짜 (전체 방송자 페이징)</label>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <label for="statsDateFilter" style="font-size: 13px; margin: 0; white-space: nowrap;">조회 날짜:</label>
-          <input type="date" id="statsDateFilter" style="padding: 5px 8px; font-size: 13px; width: auto;" onchange="onDateFilterChange()">
-          <button class="small-btn" onclick="loadAnalyticsData()">새로고침</button>
-        </div>
-      </div>
-
-      <div style="margin-bottom: 8px;">
-        <input type="text" id="bubbleSearchInput" placeholder="🔍 방송자 ID 또는 닉네임 검색..." oninput="currentPickerPage = 1; renderBubblePicker(globalLogCache)" style="padding: 8px; font-size: 13px;">
-      </div>
-
-      <!-- 버블/칩 선택 영역 -->
-      <div id="bubblePicker" class="bubble-picker-container">
-        <span style="font-size: 12px; color: #888; padding: 4px;">데이터를 불러오는 중...</span>
-      </div>
-
-      <!-- 페이징 컨트롤 바 -->
-      <div class="picker-pagination-bar" id="pickerPaginationBar">
-        <span id="pickerPageInfo">페이지 1 / 1 (총 0명)</span>
-        <div class="pagination-btns">
-          <button class="page-btn" id="prevPageBtn" onclick="changePickerPage(-1)" disabled>◀ 이전</button>
-          <button class="page-btn" id="nextPageBtn" onclick="changePickerPage(1)" disabled>다음 ▶</button>
-        </div>
-      </div>
-    </div>
-    
-    <!-- 🔄 좌우 스크롤을 지원하는 차트 영역 -->
-    <div class="chart-scroll-wrapper" id="chartScrollWrapper">
-      <div class="chart-inner-container" id="chartInnerContainer">
-        <canvas id="viewerChart"></canvas>
-      </div>
-    </div>
-
-    <!-- 매시 정각 기준 방송 개수 테이블 영역 (DB 연동형) -->
-    <div class="hourly-table-container">
-      <h3 style="font-size: 15px; color: #333; margin-bottom: 10px;">⏰ 매시 정각 기준 방송 통계 (Supabase 연동)</h3>
-      <table id="hourlyStatsTable">
-        <thead>
-          <tr>
-            <th>측정 시간 (정각 기준)</th>
-            <th style="text-align: center;">전체 방송수</th>
-            <th style="text-align: center;">rec 방송수</th>
-            <th style="text-align: center;">android 방송수</th>
-          </tr>
-        </thead>
-        <tbody id="hourlyStatsBody">
-          <tr>
-            <td colspan="4" style="text-align: center; color: #888;">데이터를 불러오는 중...</td>
           </tr>
         </tbody>
       </table>
@@ -345,6 +282,64 @@
       </section>
     </div>
     <div class="status-box" id="statusMessage"></div>
+  </div>
+
+  <!-- 탭 4: 데이터 요약 및 시각화 탭 -->
+  <div id="tab4" class="tab-content">
+    <h2>시계열 데이터 요약 및 시각화 (10분 간격 기록)</h2>
+    <div class="input-group" style="margin-bottom: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;">
+        <label style="margin: 0;">분석 대상 선택 및 조회 날짜 (전체 방송자 페이징)</label>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label for="statsDateFilter" style="font-size: 13px; margin: 0; white-space: nowrap;">조회 날짜:</label>
+          <input type="date" id="statsDateFilter" style="padding: 5px 8px; font-size: 13px; width: auto;" onchange="onDateFilterChange()">
+          <button class="small-btn" onclick="loadAnalyticsData()">새로고침</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 8px;">
+        <input type="text" id="bubbleSearchInput" placeholder="🔍 방송자 ID 또는 닉네임 검색..." oninput="currentPickerPage = 1; renderBubblePicker(globalLogCache)" style="padding: 8px; font-size: 13px;">
+      </div>
+
+      <!-- 버블/칩 선택 영역 -->
+      <div id="bubblePicker" class="bubble-picker-container">
+        <span style="font-size: 12px; color: #888; padding: 4px;">데이터를 불러오는 중...</span>
+      </div>
+
+      <!-- 페이징 컨트롤 바 -->
+      <div class="picker-pagination-bar" id="pickerPaginationBar">
+        <span id="pickerPageInfo">페이지 1 / 1 (총 0명)</span>
+        <div class="pagination-btns">
+          <button class="page-btn" id="prevPageBtn" onclick="changePickerPage(-1)" disabled>◀ 이전</button>
+          <button class="page-btn" id="nextPageBtn" onclick="changePickerPage(1)" disabled>다음 ▶</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 📈 스크롤 없는 한 화면 고정형 차트 영역 -->
+    <div class="chart-container">
+      <canvas id="viewerChart"></canvas>
+    </div>
+
+    <!-- 매시 정각 기준 방송 개수 테이블 영역 (DB 연동형) -->
+    <div class="hourly-table-container">
+      <h3 style="font-size: 15px; color: #333; margin-bottom: 10px;">⏰ 매시 정각 기준 방송 통계 (Supabase 연동)</h3>
+      <table id="hourlyStatsTable">
+        <thead>
+          <tr>
+            <th>측정 시간 (정각 기준)</th>
+            <th style="text-align: center;">전체 방송수</th>
+            <th style="text-align: center;">rec 방송수</th>
+            <th style="text-align: center;">android 방송수</th>
+          </tr>
+        </thead>
+        <tbody id="hourlyStatsBody">
+          <tr>
+            <td colspan="4" style="text-align: center; color: #888;">데이터를 불러오는 중...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
   <!-- 탭 1: 방송자 자동 배정기 -->
@@ -470,7 +465,7 @@
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
 
-    const tabIndexMap = { 'tab2': 0, 'tab4': 1, 'tab3': 2, 'tab1': 3 };
+    const tabIndexMap = { 'tab2': 0, 'tab3': 1, 'tab4': 2, 'tab1': 3 };
     document.querySelectorAll('.tab-btn')[tabIndexMap[tabId]].classList.add('active');
     document.getElementById(tabId).classList.add('active');
 
@@ -528,7 +523,10 @@
         .gte('recorded_at', slotDate.toISOString())
         .lt('recorded_at', slotEnd.toISOString());
 
-      const rowsToInsert = parsedData.map(item => ({
+      // 💡 일본 시청자 수 기준 상위 10위 이내 데이터만 추출하여 저장
+      const top10Data = parsedData.slice(0, 10);
+
+      const rowsToInsert = top10Data.map(item => ({
         recorded_at: slotDate.toISOString(),
         bj_id: item.id,
         nickname: item.name,
@@ -539,8 +537,10 @@
         android_count: stats.android
       }));
 
-      const { error } = await supabaseClient.from('viewer_logs').insert(rowsToInsert);
-      if (error) console.error("10분 간격 시계열 데이터 저장 실패:", error.message);
+      if (rowsToInsert.length > 0) {
+        const { error } = await supabaseClient.from('viewer_logs').insert(rowsToInsert);
+        if (error) console.error("상위 10위 시계열 데이터 저장 실패:", error.message);
+      }
     } catch (e) { console.error(e); }
   }
 
@@ -800,11 +800,6 @@
       }];
     }
 
-    // 💡 데이터 개수에 따라 가로 폭을 자동 확장 (데이터당 최소 70px 확보하여 좌우 스크롤 생성)
-    const minWidthPerPoint = 70;
-    const calculatedWidth = Math.max(chartLabels.length * minWidthPerPoint, document.getElementById('chartScrollWrapper').clientWidth);
-    document.getElementById('chartInnerContainer').style.width = `${calculatedWidth}px`;
-
     const ctx = document.getElementById('viewerChart').getContext('2d');
     if (viewerChartInstance) viewerChartInstance.destroy();
 
@@ -819,8 +814,8 @@
           x: { 
             grid: { display: false },
             ticks: {
-              autoSkip: false, // 💡 자동 생략 해제 (모든 점의 라벨을 무조건 표시)
-              maxRotation: 0,  // 라벨 각도 고정 (가독성 향상)
+              autoSkip: true,
+              maxRotation: 0,
               minRotation: 0
             },
             title: { display: true, text: '기록 시간 (10분 간격)' } 
@@ -1075,6 +1070,49 @@
     renderTable();
   }
 
+  function renderTable() {
+    const top30 = lastParsedData.slice(0, 30);
+    const tbody = document.getElementById('resultBody');
+    tbody.innerHTML = '';
+
+    if (top30.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">데이터 추출 실패</td></tr>';
+      return;
+    }
+
+    top30.equal = top30.forEach((item, index) => {
+      const row = document.createElement('tr');
+      const hasSupporter = (item.supporter !== '-' && !isNaN(item.supporter));
+
+      if (item.subtitleType === '고급') row.classList.add('row-advanced');
+      else if (item.subtitleType === '일반' && hasSupporter) row.classList.add('row-supporter');
+
+      const pref = bjPreferencesMap[item.id] || 'normal';
+      if (pref === 'dislike') row.classList.add('row-dislike');
+
+      const statusClass = item.liveStatus === '라이브' ? 'type-live' : (item.liveStatus === '녹화방송' ? 'type-rec' : '');
+      const supporterDisplay = hasSupporter ? item.supporter : '-';
+
+      row.innerHTML = `
+        <td class="rank">${index + 1}</td>
+        <td class="streamer-id-col">${escapeHtml(item.id + '(' + item.name + ')')}</td>
+        <td class="sub-type">${escapeHtml(item.subtitleType)}</td>
+        <td class="live-type ${statusClass}">${escapeHtml(item.liveStatus)}</td>
+        <td class="supporter-col">${supporterDisplay}</td>
+        <td class="count">${item.count.toLocaleString()} 명</td>
+        <td class="action-col" style="text-align: center;">
+          <div class="pref-btns">
+            <button class="btn-pref like ${pref === 'like' ? 'active' : ''}" onclick="setBjPreference('${escapeHtml(item.id)}', 'like')" title="추천">👍</button>
+            <button class="btn-pref dislike ${pref === 'dislike' ? 'active' : ''}" onclick="setBjPreference('${escapeHtml(item.id)}', 'dislike')" title="비추천">👎</button>
+            <button class="btn-row-copy" onclick="copySingleId('${escapeHtml(item.id)}', this)">복사</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  // 버그 방지용 보완 수정
   function renderTable() {
     const top30 = lastParsedData.slice(0, 30);
     const tbody = document.getElementById('resultBody');
