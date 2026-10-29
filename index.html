@@ -269,13 +269,13 @@
       <canvas id="viewerChart"></canvas>
     </div>
 
-    <!-- 매시 정각 기준 방송 개수 테이블 영역 -->
+    <!-- 매시 정각 기준 방송 개수 테이블 영역 (DB 연동형) -->
     <div class="hourly-table-container">
-      <h3 style="font-size: 15px; color: #333; margin-bottom: 10px;">⏰ 매시 정각 기준 방송 통계</h3>
+      <h3 style="font-size: 15px; color: #333; margin-bottom: 10px;">⏰ 매시 정각 기준 방송 통계 (Supabase 연동)</h3>
       <table id="hourlyStatsTable">
         <thead>
           <tr>
-            <th>측정 시간 (정각 근접)</th>
+            <th>측정 시간 (정각 기준)</th>
             <th style="text-align: center;">전체 방송수</th>
             <th style="text-align: center;">rec 방송수</th>
             <th style="text-align: center;">android 방송수</th>
@@ -498,9 +498,11 @@
     } catch (e) { console.error(e); }
   }
 
+  // 시계열 데이터 저장 및 정각(±3분 내) 통계를 hourly_stats 테이블에 자동 반영
   async function saveViewerLogsToSupabase(parsedData) {
     if (!supabaseClient) return;
-    const recordedAt = new Date().toISOString();
+    const now = new Date();
+    const recordedAt = now.toISOString();
     const rawText = document.getElementById('rawInput').value.trim();
     const stats = calculateLiveRecCounts(rawText);
 
@@ -516,8 +518,31 @@
     }));
 
     try {
+      // 1. 개별 시청자 로그 저장
       const { error } = await supabaseClient.from('viewer_logs').insert(rowsToInsert);
       if (error) console.error("시계열 데이터 저장 실패:", error.message);
+
+      // 2. 정각 기준 ±3분(180초) 이내인지 확인 후 hourly_stats 테이블에 업서트
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      const totalSecFromHour = minutes * 60 + seconds;
+      const isWithinPlusMinus3Min = (totalSecFromHour <= 180 || totalSecFromHour >= 3540);
+
+      if (isWithinPlusMinus3Min) {
+        // 정각 시간 문자열 추출 (예: 2026-10-29T14:00:00Z)
+        const hourDate = new Date(now);
+        hourDate.setMinutes(0, 0, 0);
+        const statHourStr = hourDate.toISOString();
+
+        await supabaseClient.from('hourly_stats').upsert({
+          stat_hour: statHourStr,
+          total_broadcasts: stats.totalBroadcasts,
+          rec_count: stats.rec,
+          android_count: stats.android,
+          updated_at: recordedAt
+        }, { onConflict: 'stat_hour' });
+      }
+
     } catch (e) { console.error(e); }
   }
 
@@ -528,6 +553,7 @@
     }
 
     try {
+      // 1. 시계열 로그 조회
       const { data: logData, error } = await supabaseClient
         .from('viewer_logs')
         .select('*')
@@ -540,9 +566,63 @@
       currentPickerPage = 1;
       renderBubblePicker(logData);
       renderChart(logData, currentSelectedMode);
-      renderHourlyStatsTable(logData);
+
+      // 2. 전용 hourly_stats 테이블에서 정각 통계 조회 후 렌더링
+      await loadHourlyStatsFromDB();
 
     } catch (e) { console.error(e); }
+  }
+
+  // Supabase hourly_stats 테이블에서 선택된 날짜의 통계 데이터 가져오기
+  async function loadHourlyStatsFromDB() {
+    const tbody = document.getElementById('hourlyStatsBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">데이터를 불러오는 중...</td></tr>';
+
+    if (!supabaseClient) return;
+    const selectedDateStr = document.getElementById('statsDateFilter').value; // YYYY-MM-DD
+
+    try {
+      // 해당 날짜 하루 동안의 정각 통계 조회
+      const startDate = `${selectedDateStr}T00:00:00Z`;
+      const endDate = `${selectedDateStr}T23:59:59Z`;
+
+      const { data, error } = await supabaseClient
+        .from('hourly_stats')
+        .select('*')
+        .gte('stat_hour', startDate)
+        .lte('stat_hour', endDate)
+        .order('stat_hour', { ascending: true });
+
+      if (error) {
+        console.error("정각 통계 조회 실패:", error.message);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">통계 데이터 조회 실패</td></tr>';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">선택한 날짜(${selectedDateStr})에 기록된 정각 통계가 없습니다.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      data.forEach(row => {
+        const dateObj = new Date(row.stat_hour);
+        const timeKey = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')} ${String(dateObj.getHours()).padStart(2, '0')}:00`;
+        
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${timeKey}</strong> <span style="font-size: 11px; color: #666;">(DB 기록됨)</span></td>
+          <td style="text-align: center; font-weight: bold; color: #007bff;">${row.total_broadcasts ?? 0} 개</td>
+          <td style="text-align: center; font-weight: bold; color: #fd7e14;">${row.rec_count ?? 0} 개</td>
+          <td style="text-align: center; font-weight: bold; color: #28a745;">${row.android_count ?? 0} 개</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+    } catch (e) {
+      console.error(e);
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">오류가 발생했습니다.</td></tr>';
+    }
   }
 
   function onDateFilterChange() {
@@ -550,11 +630,10 @@
       currentPickerPage = 1;
       renderBubblePicker(globalLogCache);
       renderChart(globalLogCache, currentSelectedMode);
-      renderHourlyStatsTable(globalLogCache);
+      loadHourlyStatsFromDB();
     }
   }
 
-  // 페이징 변경 함수
   function changePickerPage(direction) {
     currentPickerPage += direction;
     renderBubblePicker(globalLogCache);
@@ -571,7 +650,6 @@
       return new Date(item.recorded_at).toISOString().split('T')[0] === selectedDateStr;
     });
 
-    // 1. 전체 합계 통계 칩은 항상 최상단에 고정 표시 (검색어가 없을 때)
     if (!searchQuery) {
       const allSumBtn = document.createElement('div');
       allSumBtn.className = `bubble-chip stat-chip ${currentSelectedMode === 'ALL_SUM' ? 'active' : ''}`;
@@ -585,7 +663,6 @@
       pickerContainer.appendChild(allSumBtn);
     }
 
-    // 2. 방송자별 평균 시청자 수 집계
     const bjMap = {};
     dateFilteredLogs.forEach(item => {
       if (!bjMap[item.bj_id]) {
@@ -594,17 +671,15 @@
       bjMap[item.bj_id].sum += item.viewer_count;
       bjMap[item.bj_id].count += 1;
       if (item.nickname && item.nickname !== '미정') {
-        bjMap[item.bj_id].name = item.nickname; // 최신 닉네임 갱신
+        bjMap[item.bj_id].name = item.nickname;
       }
     });
 
-    // 전체 평균 시청자 수 기준으로 내림차순 정렬
     let sortedBjs = Object.values(bjMap).map(b => ({
       ...b,
       avg: Math.round(b.sum / b.count)
     })).sort((a, b) => b.avg - a.avg);
 
-    // 검색어 필터링
     if (searchQuery) {
       sortedBjs = sortedBjs.filter(bj => 
         bj.id.toLowerCase().includes(searchQuery) || 
@@ -617,16 +692,13 @@
     if (currentPickerPage > totalPages) currentPickerPage = totalPages;
     if (currentPickerPage < 1) currentPickerPage = 1;
 
-    // 페이징 슬라이스
     const startIndex = (currentPickerPage - 1) * pickerItemsPerPage;
     const currentPagedBjs = sortedBjs.slice(startIndex, startIndex + pickerItemsPerPage);
 
-    // 페이징 UI 정보 갱신
     document.getElementById('pickerPageInfo').textContent = `페이지 ${currentPickerPage} / ${totalPages} (총 방송자: ${totalItems}명)`;
     document.getElementById('prevPageBtn').disabled = (currentPickerPage <= 1);
     document.getElementById('nextPageBtn').disabled = (currentPickerPage >= totalPages);
 
-    // 칩 렌더링
     currentPagedBjs.forEach((bj, idx) => {
       const globalRank = startIndex + idx + 1;
       const btn = document.createElement('div');
@@ -644,63 +716,6 @@
     if (currentPagedBjs.length === 0) {
       pickerContainer.innerHTML += '<div style="width:100%; text-align:center; font-size: 12px; color: #888; padding: 10px;">조건에 해당하는 방송자 기록이 없습니다.</div>';
     }
-  }
-
-  function renderHourlyStatsTable(logData) {
-    const tbody = document.getElementById('hourlyStatsBody');
-    tbody.innerHTML = '';
-
-    if (!logData || logData.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">데이터가 없습니다.</td></tr>';
-      return;
-    }
-
-    const selectedDateStr = document.getElementById('statsDateFilter').value;
-
-    const filteredLogData = logData.filter(item => {
-      const itemDateStr = new Date(item.recorded_at).toISOString().split('T')[0];
-      return itemDateStr === selectedDateStr;
-    });
-
-    if (filteredLogData.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #888;">선택한 날짜(${selectedDateStr})에 기록된 정각 데이터가 없습니다.</td></tr>`;
-      return;
-    }
-
-    const hourMap = {};
-    filteredLogData.forEach(item => {
-      const date = new Date(item.recorded_at);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const hour = String(date.getHours()).padStart(2, '0');
-      
-      const hourKey = `${year}-${month}-${day} ${hour}:00`;
-      const diffFromHour = Math.abs(date.getMinutes() * 60 + date.getSeconds());
-
-      if (!hourMap[hourKey] || diffFromHour < hourMap[hourKey].diff) {
-        hourMap[hourKey] = {
-          diff: diffFromHour,
-          item: item,
-          actualTime: date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-        };
-      }
-    });
-
-    const sortedHours = Object.keys(hourMap).sort();
-
-    sortedHours.forEach(hKey => {
-      const dataObj = hourMap[hKey];
-      const rec = dataObj.item;
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td><strong>${hKey}</strong> <span style="font-size: 11px; color: #666;">(측정: ${dataObj.actualTime})</span></td>
-        <td style="text-align: center; font-weight: bold; color: #007bff;">${rec.total_broadcasts ?? 0} 개</td>
-        <td style="text-align: center; font-weight: bold; color: #fd7e14;">${rec.rec_count ?? 0} 개</td>
-        <td style="text-align: center; font-weight: bold; color: #28a745;">${rec.android_count ?? 0} 개</td>
-      `;
-      tbody.appendChild(row);
-    });
   }
 
   function renderChart(logData, targetMode) {
