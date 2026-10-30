@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>방송자 관리 도구 통합팩</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+    }
+    .main-container {
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 960px;
+    }
+    /* 탭 헤더 스타일 */
+    .tab-header {
+      display: flex;
+      border-bottom: 2px solid #dee2e6;
+      margin-bottom: 20px;
+      gap: 5px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      text-align: center;
+      font-size: 15px;
+      font-weight: bold;
+      color: #6c757d;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      color: #007bff;
+      border-bottom-color: #007bff;
+    }
+    .tab-btn:hover {
+      color: #0056b3;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* 공통 레이아웃 요소 */
+    h2 { text-align: center; color: #333; margin-top: 0; margin-bottom: 20px; }
+    .input-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; }
+    input[type="number"], input[type="text"], textarea {
+      width: 100%;
+      padding: 10px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    textarea { resize: vertical; }
+
+    /* 탭 1 (일본인 시청자수 정렬기) 전용 스타일 */
+    .copy-control-panel {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .copy-control-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      text-align: left;
+    }
+    th { background-color: #e9ecef; font-weight: bold; }
+    tr:nth-child(even) { background-color: #f8f9fa; }
+    
+    /* 고급자막, 서포터 없음 - 빨강 */
+    tr.row-advanced { background-color: #fff0f0 !important; }
+    tr.row-advanced .sub-type { color: #d9534f; font-weight: bold; }
+
+    /* 일반자막, 서포터 있음 - 노랑 */
+    tr.row-supporter {
+      background-color: #fff9db !important;
+    }
+
+    .rank { text-align: center; font-weight: bold; width: 50px; }
+    .streamer-id-col { font-family: monospace; font-size: 13px; font-weight: bold; color: #0056b3; }
+    .sub-type { text-align: center; width: 90px; }
+    .live-type { text-align: center; width: 80px; font-weight: bold; }
+    .supporter-col { text-align: center; width: 90px; font-weight: bold; color: #e67700; }
+    .type-live { color: #28a745; }
+    .type-rec { color: #fd7e14; }
+    .count { text-align: right; font-weight: bold; color: #d9534f; width: 110px; }
+    .action-col { text-align: center; width: 70px; }
+    
+    .btn-row-copy {
+      padding: 4px 8px;
+      font-size: 12px;
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-row-copy:hover { background-color: #495057; }
+    .btn-row-copy.copied { background-color: #28a745; }
+
+    /* 탭 2 (텍스트 변환기) 전용 스타일 */
+    .converter-control-bar {
+      display: grid;
+      grid-template-columns: minmax(200px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      margin-bottom: 15px;
+      padding: 15px;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      background: #f8f9fa;
+    }
+    .mode-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .action-btn-sub {
+      background-color: #2563eb;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .action-btn-sub:hover { background-color: #1d4ed8; }
+    .action-btn-banner {
+      background-color: #d97706;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .action-btn-banner:hover { background-color: #b45309; }
+    
+    .workbench {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 15px;
+    }
+    .panel {
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #dee2e6;
+      background: #f8f9fa;
+    }
+    .panel-title { font-weight: bold; font-size: 14px; color: #333; }
+    .small-actions { display: flex; gap: 5px; }
+    .small-btn {
+      padding: 5px 10px;
+      font-size: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: bold;
+      color: #555;
+    }
+    .small-btn:hover:not(:disabled) { background: #e9ecef; color: #000; }
+    .small-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .converter-editor {
+      width: 100%;
+      height: 320px;
+      padding: 12px;
+      border: none;
+      outline: none;
+      font-family: monospace;
+      font-size: 13px;
+      background: #fafafa;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .panel-footer {
+      padding: 8px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #dee2e6;
+      font-size: 12px;
+      color: #666;
+      background: #fff;
+    }
+    .status-box {
+      display: none;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+    .status-box.show { display: block; }
+    .status-box.success { background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; }
+    .status-box.warning { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+
+    /* 탭 1 (방송자 자동 배정기) 전용 스타일 */
+    .names-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 8px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      background-color: #fafafa;
+    }
+    .name-input-item { display: flex; align-items: center; gap: 8px; }
+    .name-input-item span { font-size: 13px; font-weight: bold; color: #666; min-width: 50px; }
+    .btn-group { display: flex; gap: 10px; margin-bottom: 15px; }
+    .btn-action {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+      transition: background 0.2s;
+    }
+    .btn-assign { background-color: #28a745; }
+    .btn-assign:hover { background-color: #218838; }
+    .btn-copy { background-color: #17a2b8; }
+    .btn-copy:hover { background-color: #138496; }
+    .btn-sort { background-color: #007bff; width: 100%; }
+    .btn-sort:hover { background-color: #0056b3; }
+    
+    .btn-counts-copy {
+      background-color: #6f42c1;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-counts-copy:hover { background-color: #59359a; }
+
+    .btn-live-copy {
+      background-color: #fd7e14;
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-live-copy:hover { background-color: #e86d0b; }
+    
+    .counts-summary {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .result-box {
+      height: 160px;
+      background-color: #fafafa;
+      resize: none;
+    }
+    .count-info { font-size: 12px; color: #666; }
+  </style>
+</head>
+<body>
+
+<div class="main-container">
+  <!-- 상단 탭 버튼 -->
+  <div class="tab-header">
+    <button class="tab-btn active" onclick="switchTab('tab2')">일본인 시청자수 정렬 (Top 30)</button>
+    <button class="tab-btn" onclick="switchTab('tab3')">텍스트 변환기</button>
+    <button class="tab-btn" onclick="switchTab('tab1')">방송자 자동 배정기</button>
+  </div>
+
+  <!-- 탭 2: 일본인 시청자수 정렬기 -->
+  <div id="tab2" class="tab-content active">
+    <h2>일본인 시청자수 정렬기 (Top 30)</h2>
+    <div class="input-group">
+      <label for="rawInput">텍스트 데이터 입력:</label>
+      <textarea id="rawInput" style="height: 150px;" placeholder="복사한 데이터 전체를 붙여넣으세요..." oninput="updateLiveRecDisplay()" onkeyup="updateLiveRecDisplay()"></textarea>
+    </div>
+    
+    <div class="copy-control-panel">
+      <div class="copy-control-row">
+        <span class="counts-summary" id="liveRecDisplay">전체방송수: 0 / rec: 0 / android: 0</span>
+        <button class="btn-counts-copy" onclick="copyLiveRecCounts()">전체방송수 / rec 수 / android 수</button>
+      </div>
+      <div class="copy-control-row" style="gap: 10px; border-top: 1px solid #e9ecef; padding-top: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
+          <label for="copyLimitCount" style="margin: 0; font-size: 13px; white-space: nowrap;">라이브 복사 인원수:</label>
+          <input type="number" id="copyLimitCount" min="1" value="10" style="padding: 6px; font-size: 13px;">
+        </div>
+        <button class="btn-live-copy" onclick="copyLiveStreamersForAssign()">상위 라이브 방송자 복사</button>
+      </div>
+    </div>
+
+    <button class="btn-action btn-sort" onclick="processData()">정밀 분석 및 상위 30명 정렬</button>
+
+    <div class="result-area" style="margin-top: 20px;">
+      <h3 style="margin-bottom: 10px; color: #333; font-size: 16px;">정렬 결과 (상위 30명)</h3>
+      <table id="resultTable">
+        <thead>
+          <tr>
+            <th class="rank">순위</th>
+            <th>방송자 ID</th>
+            <th class="sub-type">자막 종류</th>
+            <th class="live-type">방송 형태</th>
+            <th class="supporter-col">서포터수</th>
+            <th class="count">일본인 시청자 수</th>
+            <th class="action-col">ID 복사</th>
+          </tr>
+        </thead>
+        <tbody id="resultBody">
+          <tr>
+            <td colspan="7" style="text-align: center; color: #888;">데이터를 입력하고 버튼을 눌러주세요.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 탭 3: 텍스트 변환기 -->
+  <div id="tab3" class="tab-content">
+    <h2>텍스트 변환기</h2>
+    <div class="converter-control-bar">
+      <div class="input-group" style="margin-bottom: 0;">
+        <label for="reasonText">사유 (선택)</label>
+        <input id="reasonText" type="text" maxlength="100" autocomplete="off" placeholder="예: 방송 종료">
+      </div>
+      <div class="mode-actions">
+        <button class="action-btn-sub" id="subtitleButton" type="button">자막 재배정</button>
+        <button class="action-btn-banner" id="bannerButton" type="button">배너 변경</button>
+      </div>
+    </div>
+
+    <div class="workbench">
+      <section class="panel">
+        <header class="panel-header">
+          <span class="panel-title">원본 텍스트</span>
+          <div class="small-actions">
+            <button class="small-btn" id="pasteButton" type="button">붙여넣기</button>
+            <button class="small-btn" id="clearButton" type="button">지우기</button>
+          </div>
+        </header>
+        <textarea class="converter-editor" id="inputText" spellcheck="false" placeholder="여기에 내용을 붙여넣으세요."></textarea>
+        <footer class="panel-footer">
+          <span>여러 줄 처리 가능</span>
+          <span id="inputCount">0자</span>
+        </footer>
+      </section>
+
+      <section class="panel">
+        <header class="panel-header">
+          <span class="panel-title">변환 결과</span>
+          <div class="small-actions">
+            <button class="small-btn" id="copyButton" type="button" disabled>결과 복사</button>
+          </div>
+        </header>
+        <textarea class="converter-editor" id="outputText" spellcheck="false" placeholder="변환 결과가 여기에 표시됩니다."></textarea>
+        <footer class="panel-footer">
+          <span id="modeChip" style="font-weight: bold; color: #555;">변환 대기</span>
+          <span id="resultCount">0건</span>
+        </footer>
+      </section>
+    </div>
+
+    <div class="status-box" id="statusMessage"></div>
+  </div>
+
+  <!-- 탭 1: 방송자 자동 배정기 -->
+  <div id="tab1" class="tab-content">
+    <h2>방송자 자동 배정기</h2>
+    <div class="input-group">
+      <label for="personCount">배정할 인원 수:</label>
+      <input type="number" id="personCount" min="1" value="3" onchange="generateNameInputs()" onkeyup="generateNameInputs()">
+    </div>
+    <div class="input-group">
+      <label>참가자 이름 설정:</label>
+      <div id="namesContainer" class="names-grid"></div>
+    </div>
+    <div class="input-group">
+      <label for="streamerInput">데이터 입력 (복사한 텍스트 전체):</label>
+      <textarea id="streamerInput" style="height: 160px;" placeholder="복사한 데이터 텍스트를 그대로 붙여넣으세요."></textarea>
+    </div>
+    <div class="btn-group">
+      <button class="btn-action btn-assign" onclick="assignStreamers()">추출 및 배정하기</button>
+      <button class="btn-action btn-copy" onclick="copyResult()">결과 복사</button>
+    </div>
+    <div class="input-group">
+      <label for="resultOutput">배정 결과 <span id="extractedCount" class="count-info"></span></label>
+      <textarea id="resultOutput" class="result-box" readonly placeholder="배정 결과가 여기에 표시됩니다."></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+  let lastParsedData = [];
+
+  // === 탭 전환 스크립트 ===
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+    if (tabId === 'tab2') document.querySelectorAll('.tab-btn')[0].classList.add('active');
+    else if (tabId === 'tab3') document.querySelectorAll('.tab-btn')[1].classList.add('active');
+    else if (tabId === 'tab1') document.querySelectorAll('.tab-btn')[2].classList.add('active');
+
+    document.getElementById(tabId).classList.add('active');
+  }
+
+  // === 탭 3 로직: 방송자 자동 배정기 ===
+  window.onload = function() {
+    generateNameInputs();
+  };
+
+  function generateNameInputs() {
+    const count = parseInt(document.getElementById('personCount').value) || 0;
+    const container = document.getElementById('namesContainer');
+    const currentValues = Array.from(container.querySelectorAll('input')).map(input => input.value);
+    container.innerHTML = '';
+
+    for (let i = 1; i <= count; i++) {
+      const div = document.createElement('div');
+      div.className = 'name-input-item';
+      
+      const label = document.createElement('span');
+      label.innerText = `${i}번:`;
+      
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'person-name-input';
+      input.value = currentValues[i - 1] || `${i}번 참가자`;
+      input.placeholder = `${i}번 이름`;
+
+      div.appendChild(label);
+      div.appendChild(input);
+      container.appendChild(div);
+    }
+  }
+
+  function extractStreamerNames(text) {
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const streamers = [];
+
+    let i = 0;
+    while (i < lines.length) {
+      if (/^\d+$/.test(lines[i])) {
+        let blockLines = [];
+        let j = i;
+        while (j < lines.length && (j === i || !/^\d+$/.test(lines[j]) || lines[j].length > 15)) {
+          blockLines.push(lines[j]);
+          j++;
+        }
+
+        const blockText = blockLines.join('\n');
+        const isRec = blockText.includes('녹화방송') || blockText.includes('녹방') || blockText.toLowerCase().includes('rec');
+        
+        if (!isRec) {
+          for (let line of blockLines) {
+            if (line.includes('(') && line.includes(')')) {
+              const match = line.match(/^(.*?)\((.*?)\)$/);
+              if (match) {
+                const nick = match[1].trim();
+                const id = match[2].trim();
+                const streamerStr = `${id}(${nick})`;
+                if (!streamers.includes(streamerStr)) streamers.push(streamerStr);
+                break;
+              } else if (/^[a-zA-Z0-9_]+\(.*\)$/.test(line)) {
+                if (!streamers.includes(line)) streamers.push(line);
+                break;
+              }
+            }
+          }
+        }
+        i = j;
+      } else {
+        const line = lines[i];
+        if (!line.includes('녹화방송') && !line.includes('녹방') && !line.toLowerCase().includes('rec')) {
+          if (/^[a-zA-Z0-9_]+\(.*\)$/.test(line)) {
+            if (!streamers.includes(line)) streamers.push(line);
+          }
+        }
+        i++;
+      }
+    }
+    return streamers;
+  }
+
+  function assignStreamers() {
+    const personCount = parseInt(document.getElementById('personCount').value);
+    const inputText = document.getElementById('streamerInput').value.trim();
+
+    if (!personCount || personCount <= 0) { alert("올바른 인원 수를 입력해 주세요."); return; }
+    if (!inputText) { alert("데이터를 입력해 주세요."); return; }
+
+    const nameInputs = document.querySelectorAll('.person-name-input');
+    const participantNames = Array.from(nameInputs).map((input, idx) => input.value.trim() || `${idx + 1}번 참가자`);
+    const streamers = extractStreamerNames(inputText);
+
+    if (streamers.length === 0) {
+      alert("배정 가능한 라이브 방송자 정보를 찾을 수 없습니다. (녹화방송은 자동 제외됩니다)");
+      return;
+    }
+
+    document.getElementById('extractedCount').innerText = `(라이브 방송자 총 ${streamers.length}명 추출됨)`;
+
+    const fixedCount = Math.min(personCount, streamers.length);
+    const assignedMap = Array.from({ length: personCount }, () => []);
+
+    for (let i = 0; i < fixedCount; i++) assignedMap[i].push(streamers[i]);
+
+    const remainingStreamers = streamers.slice(fixedCount);
+    for (let i = remainingStreamers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [remainingStreamers[i], remainingStreamers[j]] = [remainingStreamers[j], remainingStreamers[i]];
+    }
+
+    let remIndex = 0;
+    while (remIndex < remainingStreamers.length) {
+      for (let i = 0; i < personCount && remIndex < remainingStreamers.length; i++) {
+        assignedMap[i].push(remainingStreamers[remIndex]);
+        remIndex++;
+      }
+    }
+
+    let resultText = "";
+    for (let i = 0; i < personCount; i++) {
+      const pName = participantNames[i] || `${i + 1}번 참가자`;
+      const assigned = assignedMap[i];
+      resultText += `[${pName}]\n` + (assigned.length > 0 ? assigned.join('\n' ) : "(없음)") + '\n\n';
+    }
+
+    document.getElementById('resultOutput').value = resultText.trim();
+  }
+
+  function copyResult() {
+    const resultOutput = document.getElementById('resultOutput');
+    if (!resultOutput.value) { alert("복사할 결과가 없습니다."); return; }
+    resultOutput.select();
+    copyTextSafe(resultOutput.value).then(() => {
+      alert("결과가 클립보드에 복사되었습니다.");
+    }).catch(() => { alert('복사에 실패했습니다. 브라우저에서 직접 파일을 열어 다시 시도해주세요.'); });
+  }
+
+  // === 탭 1 로직: 일본인 시청자수 정렬기 ===
+  function calculateLiveRecCounts(rawText) {
+    if (!rawText) return { totalBroadcasts: 0, rec: 0, android: 0 };
+    const blocks = rawText.split('관리').filter(b => b.trim().length > 0);
+    let liveCount = 0, recCount = 0, androidCount = 0;
+
+    blocks.forEach((block) => {
+      const lines = block.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+      const isLive = lines.some(line => line.split('\t').map(p => p.trim()).some(p => p.toLowerCase().startsWith('live'))) || block.includes(' live ');
+      const isRec = lines.some(line => line.split('\t').map(p => p.trim()).some(p => p.toLowerCase().startsWith('rec'))) || block.includes(' rec ') || block.includes('녹화방송');
+
+      if (isLive) liveCount++;
+      else if (isRec) recCount++;
+
+      // android 방송 수 (라이브/rec로 집계된 방송 중 플랫폼 항목이 android인 경우)
+      if (isLive || isRec) {
+        const hasAndroid = block.split(/[\r\n\t]+/).some(t => t.trim().toLowerCase() === 'android');
+        if (hasAndroid) androidCount++;
+      }
+    });
+    
+    return { totalBroadcasts: liveCount + recCount, rec: recCount, android: androidCount };
+  }
+
+  function updateLiveRecDisplay() {
+    const rawText = document.getElementById('rawInput').value.trim();
+    const { totalBroadcasts, rec, android } = calculateLiveRecCounts(rawText);
+    document.getElementById('liveRecDisplay').innerText = `전체방송수: ${totalBroadcasts} / rec: ${rec} / android: ${android}`;
+  }
+
+  function copyLiveRecCounts() {
+    const rawText = document.getElementById('rawInput').value.trim();
+    if (!rawText) { alert('데이터를 입력해주세요.'); return; }
+    const { totalBroadcasts, rec, android } = calculateLiveRecCounts(rawText);
+    copyTextSafe(`${totalBroadcasts}\t${rec}\t${android}`).then(() => {
+      alert(`복사되었습니다!\n전체방송수: ${totalBroadcasts}, rec 수: ${rec}, android 수: ${android}`);
+    }).catch(() => {
+      alert('복사에 실패했습니다. 브라우저에서 직접 파일을 열어 다시 시도해주세요.');
+    });
+  }
+
+  // 클립보드 복사 (navigator.clipboard가 막힌 환경에서는 예전 방식으로 대체)
+  function copyTextSafe(text) {
+    return new Promise((resolve, reject) => {
+      const fallback = () => {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          ok ? resolve() : reject(new Error('copy failed'));
+        } catch (e) { reject(e); }
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(resolve).catch(fallback);
+      } else {
+        fallback();
+      }
+    });
+  }
+
+  function copyLiveStreamersForAssign() {
+    const rawText = document.getElementById('rawInput').value.trim();
+    if (!rawText) { alert('데이터를 입력해주세요.'); return; }
+    processData();
+    const limitCount = parseInt(document.getElementById('copyLimitCount').value) || 10;
+    const liveStreamersText = lastParsedData
+      .filter(item => item.liveStatus === '라이브')
+      .slice(0, limitCount)
+      .map(item => `${item.id}(${item.name})`)
+      .join('\n');
+
+    if (!liveStreamersText) { alert('복사할 라이브 방송자 데이터가 없습니다.'); return; }
+    copyTextSafe(liveStreamersText).then(() => {
+      alert(`상위 라이브 방송자 ${limitCount}명의 데이터가 복사되었습니다!`);
+    }).catch(() => { alert('복사에 실패했습니다. 브라우저에서 직접 파일을 열어 다시 시도해주세요.'); });
+  }
+
+  function processData() {
+    const rawText = document.getElementById('rawInput').value.trim();
+    if (!rawText) { alert('데이터를 입력해주세요.'); return; }
+    updateLiveRecDisplay();
+
+    const blocks = rawText.split('관리').filter(b => b.trim().length > 0);
+    const parsedData = [];
+
+    blocks.forEach((block) => {
+      const lines = block.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+      let streamerId = '-', streamerName = '-', jpCount = null, subtitleType = '-';
+      let supporterVal = '-';
+      
+      const isLive = lines.some(line => line.split('\t').map(p => p.trim()).some(p => p.toLowerCase().startsWith('live'))) || block.includes(' live ');
+      const isRec = lines.some(line => line.split('\t').map(p => p.trim()).some(p => p.toLowerCase().startsWith('rec'))) || block.includes(' rec ') || block.includes('녹화방송');
+
+      let liveStatus = isLive ? '라이브' : (isRec ? '녹화방송' : '-');
+      if (block.includes('고급')) subtitleType = '고급';
+      else if (block.includes('일반')) subtitleType = '일반';
+
+      for (let line of lines) {
+        const tabs = line.split('\t').map(t => t.trim());
+        if (tabs.length >= 3 && /^\d+$/.test(tabs[0])) {
+          streamerId = tabs[1]; streamerName = tabs[2]; break;
+        } else if (line.includes('(') && line.includes(')')) {
+          const match = line.match(/^(.*?)\((.*?)\)$/);
+          if (match) { streamerName = match[1].trim(); streamerId = match[2].trim(); break; }
+        }
+      }
+
+      // 1. 일본인 시청자 수 파싱 로직
+      const allTokens = block.split(/[\r\n\t]+/).map(t => t.trim()).filter(t => t.length > 0);
+      const webIndex = allTokens.findIndex(t => ['web', 'android'].includes(t.toLowerCase()));
+      if (webIndex !== -1) {
+        const numbers = [];
+        for (let token of allTokens.slice(webIndex + 1)) {
+          const clean = token.replace(/[^0-9]/g, '');
+          if (/^\d+$/.test(clean) && !token.includes('명')) numbers.push(parseInt(clean, 10));
+          if (numbers.length >= 2) break;
+        }
+        if (numbers.length >= 2) jpCount = numbers[1];
+        else if (numbers.length === 1) jpCount = numbers[0];
+      }
+
+      // 2. 2번째 '○번' 등장 뒤에 나오는 데이터의 마지막 행 숫자 (서포터 수) 파싱 로직
+      let numMatchCount = 0;
+      let targetSubTokens = [];
+      for (let i = 0; i < lines.length; i++) {
+        if (/^\d+번/.test(lines[i]) || lines[i].includes('번')) {
+          numMatchCount++;
+          if (numMatchCount === 2) {
+            targetSubTokens = lines.slice(i + 1);
+            break;
+          }
+        }
+      }
+
+      if (targetSubTokens.length > 0) {
+        for (let k = targetSubTokens.length - 1; k >= 0; k--) {
+          const cleanedToken = targetSubTokens[k].replace(/[^0-9]/g, '');
+          if (/^\d+$/.test(cleanedToken) && cleanedToken.length < 7 && !targetSubTokens[k].includes('명')) {
+            supporterVal = parseInt(cleanedToken, 10);
+            break;
+          }
+        }
+      }
+
+      if (streamerId !== '-' && jpCount !== null) {
+        parsedData.push({ id: streamerId, name: streamerName, count: jpCount, supporter: supporterVal, subtitleType, liveStatus });
+      }
+    });
+
+    parsedData.sort((a, b) => b.count - a.count);
+    lastParsedData = parsedData;
+    const top30 = parsedData.slice(0, 30);
+    const tbody = document.getElementById('resultBody');
+    tbody.innerHTML = '';
+
+    if (top30.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">데이터 추출 실패</td></tr>';
+      return;
+    }
+
+    top30.forEach((item, index) => {
+      const row = document.createElement('tr');
+      
+      const hasSupporter = (item.supporter !== '-' && !isNaN(item.supporter));
+
+      // 조건별 배경색 클래스 부여
+      if (item.subtitleType === '고급') {
+        row.classList.add('row-advanced'); // 고급자막, 서포터 없음 -> 빨강 배경
+      } else if (item.subtitleType === '일반' && hasSupporter) {
+        row.classList.add('row-supporter'); // 일반자막, 서포터 있음 -> 노랑 배경
+      }
+      // 일반자막, 서포터 없음 -> 별도의 클래스 없이 기본 배경 유지
+
+      const statusClass = item.liveStatus === '라이브' ? 'type-live' : (item.liveStatus === '녹화방송' ? 'type-rec' : '');
+      const supporterDisplay = hasSupporter ? item.supporter : '-';
+
+      row.innerHTML = `
+        <td class="rank">${index + 1}</td>
+        <td class="streamer-id-col">${escapeHtml(item.id + '(' + item.name + ')')}</td>
+        <td class="sub-type">${escapeHtml(item.subtitleType)}</td>
+        <td class="live-type ${statusClass}">${escapeHtml(item.liveStatus)}</td>
+        <td class="supporter-col">${supporterDisplay}</td>
+        <td class="count">${item.count.toLocaleString()} 명</td>
+        <td class="action-col"><button class="btn-row-copy" onclick="copySingleId('${escapeHtml(item.id)}', this)">복사</button></td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  function copySingleId(idText, btnElement) {
+    copyTextSafe(idText).then(() => {
+      const original = btnElement.innerText;
+      btnElement.innerText = "완료!";
+      btnElement.classList.add("copied");
+      setTimeout(() => { btnElement.innerText = original; btnElement.classList.remove("copied"); }, 1200);
+    }).catch(() => { alert('복사에 실패했습니다. 브라우저에서 직접 파일을 열어 다시 시도해주세요.'); });
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
+  }
+
+  // === 탭 2 로직: 텍스트 변환기 ===
+  (() => {
+    const elInput = document.getElementById("inputText");
+    const elOutput = document.getElementById("outputText");
+    const elReason = document.getElementById("reasonText");
+    const btnSub = document.getElementById("subtitleButton");
+    const btnBanner = document.getElementById("bannerButton");
+    const btnPaste = document.getElementById("pasteButton");
+    const btnClear = document.getElementById("clearButton");
+    const btnCopy = document.getElementById("copyButton");
+    const elInputCount = document.getElementById("inputCount");
+    const elResultCount = document.getElementById("resultCount");
+    const elModeChip = document.getElementById("modeChip");
+    const elStatus = document.getElementById("statusMessage");
+    let lastMode = "subtitle";
+
+    function splitLines(value) {
+      return String(value || "").split(/\r\n|[\n\v\f\r\x1c-\x1e\x85\u2028\u2029]/);
+    }
+
+    function reasonLine(label, reason) {
+      const val = String(reason || "").trim();
+      return val ? `${label} (${val})` : `${label} ( )`;
+    }
+
+    function convertSubtitle(source, reason = "") {
+      const lines = splitLines(source);
+      let converted = "", pairs = 0;
+      for (const line of lines) {
+        let beforeFound = 0;
+        for (const cell of line.split("\t")) {
+          if (cell.includes("(") && cell.includes(")") && !cell.includes("pdlive") && !cell.includes("자막예약시간")) {
+            if (beforeFound === 0) { converted += `${cell} → `; beforeFound = 1; }
+            else { converted += `${cell}\n`; beforeFound = 0; pairs += 1; }
+          }
+        }
+      }
+      converted += reasonLine("자막 재배정", reason);
+      return { text: converted, count: pairs };
+    }
+
+    function convertBanner(source, reason = "") {
+      const lines = splitLines(source);
+      let converted = "", count = 0;
+      for (const line of lines) {
+        if (line.includes(")") && line.includes("(") && line.charAt(0) !== "(" && line.charAt(line.length - 1) === ")") {
+          converted += `${line}\n`; count += 1;
+        }
+      }
+      converted += reasonLine("배너 순서 변경", reason);
+      return { text: converted, count };
+    }
+
+    function showStatus(msg, type) {
+      elStatus.textContent = msg;
+      elStatus.className = `status-box show ${type}`;
+    }
+
+    function runConv(mode) {
+      const source = elInput.value;
+      if (!source.trim()) { showStatus("원본 텍스트를 입력해주세요.", "warning"); return; }
+      lastMode = mode;
+      const res = mode === "banner" ? convertBanner(source, elReason.value) : convertSubtitle(source, elReason.value);
+      elOutput.value = res.text;
+      btnCopy.disabled = false;
+      elResultCount.textContent = `${res.count}건`;
+      elModeChip.textContent = mode === "banner" ? "배너 변경" : "자막 재배정";
+      showStatus(`${res.count}건 변환 완료`, "success");
+    }
+
+    btnSub.addEventListener("click", () => runConv("subtitle"));
+    btnBanner.addEventListener("click", () => runConv("banner"));
+    elInput.addEventListener("input", () => elInputCount.textContent = `${elInput.value.length}자`);
+    
+    btnPaste.addEventListener("click", async () => {
+      try {
+        elInput.value = await navigator.clipboard.readText();
+        elInputCount.textContent = `${elInput.value.length}자`;
+        showStatus("붙여넣기 완료", "success");
+      } catch { alert("클립보드 권한을 확인해주세요."); }
+    });
+
+    btnClear.addEventListener("click", () => {
+      elInput.value = ""; elOutput.value = ""; elReason.value = "";
+      btnCopy.disabled = true; elInputCount.textContent = "0자"; elResultCount.textContent = "0건";
+      elModeChip.textContent = "변환 대기"; elStatus.className = "status-box";
+    });
+
+    btnCopy.addEventListener("click", async () => {
+      try {
+        await copyTextSafe(elOutput.value);
+        showStatus("결과 복사 완료", "success");
+      } catch (e) {
+        showStatus("복사에 실패했습니다.", "error");
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>
