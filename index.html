@@ -363,6 +363,7 @@
         <div style="display: flex; align-items: center; gap: 8px;">
           <label for="statsDateFilter" style="font-size: 13px; margin: 0; white-space: nowrap;">조회 날짜:</label>
           <input type="date" id="statsDateFilter" style="padding: 5px 8px; font-size: 13px; width: auto;" onchange="onDateFilterChange()">
+          <button class="small-btn" onclick="setToTodayAndReload()">오늘로 설정</button>
           <button class="small-btn" onclick="loadAnalyticsData()">새로고침</button>
         </div>
       </div>
@@ -475,6 +476,13 @@
     try { return atob(encoded); } catch(e) { return ""; }
   }
 
+  // 로컬 시간(KST) 기준 ISO 문자열 생성 함수 (날짜 밀림 방지)
+  function getLocalISOString(dateObj) {
+    const offsetMs = dateObj.getTimezoneOffset() * 60 * 1000;
+    const localDate = new Date(dateObj.getTime() - offsetMs);
+    return localDate.toISOString().slice(0, -1);
+  }
+
   let lastParsedData = [];
   let supabaseClient = null;
   let bjPreferencesMap = {}; 
@@ -536,7 +544,21 @@
     document.querySelectorAll('.tab-btn')[tabIndexMap[tabId]].classList.add('active');
     document.getElementById(tabId).classList.add('active');
 
-    if (tabId === 'tab4') loadAnalyticsData();
+    if (tabId === 'tab4') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const dateInput = document.getElementById('statsDateFilter');
+      if (dateInput) dateInput.value = todayStr;
+      loadAnalyticsData();
+    }
+  }
+
+  function setToTodayAndReload() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('statsDateFilter');
+    if (dateInput) {
+      dateInput.value = todayStr;
+      loadAnalyticsData();
+    }
   }
 
   async function loadPreferences() {
@@ -559,7 +581,7 @@
     try {
       await supabaseClient
         .from('bj_preferences')
-        .upsert({ bj_id: bjId, status: newStatus, updated_at: new Date().toISOString() }, { onConflict: 'bj_id' });
+        .upsert({ bj_id: bjId, status: newStatus, updated_at: getLocalISOString(new Date()) }, { onConflict: 'bj_id' });
       renderTable();
     } catch (e) { console.error(e); }
   }
@@ -610,7 +632,6 @@
         return;
       }
 
-      // 부모 메모와 대댓글 분류 정렬
       const parentMemos = data.filter(m => !m.parent_id);
       const replyMemos = data.filter(m => m.parent_id);
 
@@ -618,7 +639,6 @@
       
       parentMemos.forEach(parent => {
         container.appendChild(createMemoElement(parent, false));
-        // 해당 부모의 대댓글들 찾기
         const children = replyMemos.filter(r => r.parent_id === parent.id);
         children.forEach(child => {
           container.appendChild(createMemoElement(child, true));
@@ -703,7 +723,6 @@
 
     try {
       if (activeEditMemoId) {
-        // 수정 모드
         const { error } = await supabaseClient
           .from('bj_memos')
           .update({ content: content })
@@ -712,7 +731,6 @@
         if (error) { alert("수정 실패: " + error.message); return; }
         cancelEditMode();
       } else {
-        // 등록 모드 (새 메모 또는 대댓글)
         const insertData = {
           bj_id: currentMemoBjId,
           parent_id: activeReplyParentId ? activeReplyParentId : null,
@@ -768,11 +786,14 @@
       const slotEnd = new Date(slotDate);
       slotEnd.setMinutes(slotEnd.getMinutes() + 15);
 
+      const slotDateStr = getLocalISOString(slotDate);
+      const slotEndStr = getLocalISOString(slotEnd);
+
       const { data: existingLogs, error: checkError } = await supabaseClient
         .from('viewer_logs')
         .select('id')
-        .gte('recorded_at', slotDate.toISOString())
-        .lt('recorded_at', slotEnd.toISOString())
+        .gte('recorded_at', slotDateStr)
+        .lt('recorded_at', slotEndStr)
         .limit(1);
 
       if (checkError) return;
@@ -780,7 +801,7 @@
 
       const top10Data = parsedData.slice(0, 10);
       const rowsToInsert = top10Data.map(item => ({
-        recorded_at: slotDate.toISOString(),
+        recorded_at: slotDateStr,
         bj_id: item.id,
         nickname: item.name,
         viewer_count: item.count,
@@ -809,7 +830,7 @@
     const stats = calculateLiveRecCounts(rawText);
     const hourDate = new Date(now);
     hourDate.setMinutes(0, 0, 0);
-    const statHourStr = hourDate.toISOString();
+    const statHourStr = getLocalISOString(hourDate);
 
     try {
       const { data: existingStat } = await supabaseClient
@@ -827,7 +848,7 @@
           total_broadcasts: stats.totalBroadcasts,
           rec_count: stats.rec,
           android_count: stats.android,
-          updated_at: now.toISOString()
+          updated_at: getLocalISOString(now)
         }, { onConflict: 'stat_hour' });
       }
     } catch (e) { console.error(e); }
