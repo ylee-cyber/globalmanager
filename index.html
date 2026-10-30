@@ -87,6 +87,38 @@
       align-items: center;
     }
 
+    /* 결과 영역 헤더 컨테이너 (제목 + 우측 상단 합계 카드) */
+    .result-header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      margin-top: 20px;
+      border-bottom: 2px solid #eaeaea;
+      padding-bottom: 10px;
+    }
+
+    /* 우측 상단 일본인 시청자 수 합계 카드 디자인 */
+    .summary-badge {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      padding: 8px 14px;
+      border-radius: 8px;
+      text-align: right;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .summary-label {
+      font-size: 11px;
+      color: #6c757d;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .summary-value {
+      font-size: 16px;
+      font-weight: bold;
+      color: #d9534f;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -345,8 +377,16 @@
 
     <button class="btn-action btn-sort" onclick="processData()">정밀 분석 및 상위 30명 정렬</button>
 
-    <div class="result-area" style="margin-top: 20px;">
-      <h3 style="margin-bottom: 10px; color: #333; font-size: 16px;">정렬 결과 (상위 30명)</h3>
+    <div class="result-area">
+      <!-- 결과 영역 헤더 (제목 + 우측 상단 합계 카드) -->
+      <div class="result-header-container">
+        <h3 style="margin: 0; color: #333; font-size: 16px;">정렬 결과 (상위 30명)</h3>
+        <div class="summary-badge">
+          <span class="summary-label">전체 입력 데이터 일본인 시청자수 합계</span>
+          <span id="total-jp-viewers" class="summary-value">0 명</span>
+        </div>
+      </div>
+
       <table id="resultTable">
         <thead>
           <tr>
@@ -457,7 +497,7 @@
     document.getElementById(tabId).classList.add('active');
   }
 
-  // === 탭 3 로직: 방송자 자동 배정기 ===
+  // === 탭 로직 초기화 ===
   window.onload = function() {
     generateNameInputs();
   };
@@ -591,7 +631,7 @@
     }).catch(() => { alert('복사에 실패했습니다. 브라우저에서 직접 파일을 열어 다시 시도해주세요.'); });
   }
 
-  // === 탭 1 로직: 일본인 시청자수 정렬기 ===
+  // === 일본인 시청자수 정렬기 로직 ===
   function calculateLiveRecCounts(rawText) {
     if (!rawText) return { totalBroadcasts: 0, rec: 0, android: 0 };
     const blocks = rawText.split('관리').filter(b => b.trim().length > 0);
@@ -605,7 +645,6 @@
       if (isLive) liveCount++;
       else if (isRec) recCount++;
 
-      // android 방송 수 (라이브/rec로 집계된 방송 중 플랫폼 항목이 android인 경우)
       if (isLive || isRec) {
         const hasAndroid = block.split(/[\r\n\t]+/).some(t => t.trim().toLowerCase() === 'android');
         if (hasAndroid) androidCount++;
@@ -632,7 +671,6 @@
     });
   }
 
-  // 클립보드 복사 (navigator.clipboard가 막힌 환경에서는 예전 방식으로 대체)
   function copyTextSafe(text) {
     return new Promise((resolve, reject) => {
       const fallback = () => {
@@ -704,7 +742,7 @@
         }
       }
 
-      // 1. 일본인 시청자 수 파싱 로직
+      // 일본인 시청자 수 파싱 로직
       const allTokens = block.split(/[\r\n\t]+/).map(t => t.trim()).filter(t => t.length > 0);
       const webIndex = allTokens.findIndex(t => ['web', 'android'].includes(t.toLowerCase()));
       if (webIndex !== -1) {
@@ -718,7 +756,7 @@
         else if (numbers.length === 1) jpCount = numbers[0];
       }
 
-      // 2. 2번째 '○번' 등장 뒤에 나오는 데이터의 마지막 행 숫자 (서포터 수) 파싱 로직
+      // 서포터 수 파싱 로직
       let numMatchCount = 0;
       let targetSubTokens = [];
       for (let i = 0; i < lines.length; i++) {
@@ -746,6 +784,13 @@
       }
     });
 
+    // 전체 입력 데이터에서 파싱된 모든 일본인 시청자 수 합계 계산
+    let totalJpViewers = 0;
+    parsedData.forEach(item => {
+      totalJpViewers += item.count;
+    });
+    document.getElementById('total-jp-viewers').innerText = `${totalJpViewers.toLocaleString()} 명`;
+
     parsedData.sort((a, b) => b.count - a.count);
     lastParsedData = parsedData;
     const top30 = parsedData.slice(0, 30);
@@ -754,21 +799,19 @@
 
     if (top30.length === 0) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">데이터 추출 실패</td></tr>';
+      document.getElementById('total-jp-viewers').innerText = '0 명';
       return;
     }
 
     top30.forEach((item, index) => {
       const row = document.createElement('tr');
-      
       const hasSupporter = (item.supporter !== '-' && !isNaN(item.supporter));
 
-      // 조건별 배경색 클래스 부여
       if (item.subtitleType === '고급') {
-        row.classList.add('row-advanced'); // 고급자막, 서포터 없음 -> 빨강 배경
+        row.classList.add('row-advanced');
       } else if (item.subtitleType === '일반' && hasSupporter) {
-        row.classList.add('row-supporter'); // 일반자막, 서포터 있음 -> 노랑 배경
+        row.classList.add('row-supporter');
       }
-      // 일반자막, 서포터 없음 -> 별도의 클래스 없이 기본 배경 유지
 
       const statusClass = item.liveStatus === '라이브' ? 'type-live' : (item.liveStatus === '녹화방송' ? 'type-rec' : '');
       const supporterDisplay = hasSupporter ? item.supporter : '-';
@@ -799,7 +842,7 @@
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "&#39;");
   }
 
-  // === 탭 2 로직: 텍스트 변환기 ===
+  // === 텍스트 변환기 로직 ===
   (() => {
     const elInput = document.getElementById("inputText");
     const elOutput = document.getElementById("outputText");
@@ -813,7 +856,6 @@
     const elResultCount = document.getElementById("resultCount");
     const elModeChip = document.getElementById("modeChip");
     const elStatus = document.getElementById("statusMessage");
-    let lastMode = "subtitle";
 
     function splitLines(value) {
       return String(value || "").split(/\r\n|[\n\v\f\r\x1c-\x1e\x85\u2028\u2029]/);
@@ -860,7 +902,6 @@
     function runConv(mode) {
       const source = elInput.value;
       if (!source.trim()) { showStatus("원본 텍스트를 입력해주세요.", "warning"); return; }
-      lastMode = mode;
       const res = mode === "banner" ? convertBanner(source, elReason.value) : convertSubtitle(source, elReason.value);
       elOutput.value = res.text;
       btnCopy.disabled = false;
